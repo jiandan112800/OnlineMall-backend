@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.muzi.mapper.OrderMapper">
+    <resultMap id="goodMap" type="Map">
+        <result property="goodId" column="good_id"></result>
+        <result property="goodName" column="good_name"></result>
+        <result property="count" column="count"></result>
+        <result property="price" column="price"></result>
+        <result property="discount" column="discount"></result>
+        <result property="standard" column="standard"></result>
+        <result property="img" column="imgs"></result>
+    </resultMap>
+    <select id="selectByUserId" parameterType="int" resultType="java.util.HashMap">
+        SELECT o.*, og.good_id, good.`name` AS good_name, og.count, og.standard, good.imgs,
+               CASE WHEN oc.id IS NULL THEN 0 ELSE 1 END AS has_comment
+        FROM t_order o
+                 JOIN order_goods og ON o.id = og.order_id
+                 JOIN good ON og.good_id = good.id
+                 LEFT JOIN order_comment oc ON oc.order_id = o.id
+        WHERE o.user_id = #{userId}
+        ORDER BY o.create_time DESC
+    </select>
+    <!-- 我的订单：按用户 + 条件（订单号、状态、商品名）查询 -->
+    <select id="selectByUserAndCondition" parameterType="java.util.HashMap" resultType="java.util.HashMap">
+        SELECT o.*, og.good_id, good.`name` AS good_name, og.count, og.standard, good.imgs,
+               CASE WHEN oc.id IS NULL THEN 0 ELSE 1 END AS has_comment
+        FROM t_order o
+                 JOIN order_goods og ON o.id = og.order_id
+                 JOIN good ON og.good_id = good.id
+                 LEFT JOIN order_comment oc ON oc.order_id = o.id
+        WHERE o.user_id = #{userId}
+        <if test="orderNo != null and orderNo != ''">
+            AND o.order_no LIKE CONCAT('%', #{orderNo}, '%')
+        </if>
+        <if test="state != null and state != ''">
+            AND o.state = #{state}
+        </if>
+        <if test="goodName != null and goodName != ''">
+            AND good.`name` LIKE CONCAT('%', #{goodName}, '%')
+        </if>
+        ORDER BY o.create_time DESC
+    </select>
+    <select id="selectByOrderNo" parameterType="String" resultMap="goodMap">
+        SELECT  og.good_id,good.`name` as good_name,  og.standard,gs.price ,good.discount ,og.count, good.imgs
+        FROM t_order o, order_goods og ,good,good_standard gs
+        WHERE o.id = og.order_id AND o.order_no = #{orderNo} AND og.good_id = good.id
+          AND gs.good_id = og.good_id AND gs.`value` = standard
+    </select>
+</mapper>
