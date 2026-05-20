@@ -5,6 +5,8 @@ import com.muzi.utils.PathUtils;
 public class Constants {
     public static final String CODE_200 = "200";//成功
     public static final String CODE_400 = "400";//请求错误
+    public static final String CODE_404 = "404";//资源不存在
+    public static final String CODE_405 = "405";//请求方法不允许
     public static final String CODE_500 = "500";//系统错误
     public static final String NO_RESULT = "510";//未找到结果
     public static final String CODE_401 = "401";//无权限

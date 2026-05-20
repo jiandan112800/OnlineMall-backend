@@ -79,27 +79,36 @@ public class OrderService extends ServiceImpl<OrderMapper, Order> {
     //给订单付款
     @Transactional
     public void payOrder(String orderNo) {
-        //更改状态为代付款
-        orderMapper.payOrder(orderNo);
-        //给对应规格减库存
+        // FIX: 1. 先查询订单，为空则直接抛业务异常（404），避免后续 NPE 返回 500
         Map<String, Object> orderMap = orderMapper.selectByOrderNo(orderNo);
-        int count = (int) orderMap.get("count");
-        Object goodIdObj = orderMap.get("goodId");
-        Long goodId = null;
-        if(goodIdObj instanceof Long) {
-            goodId = (Long) goodIdObj;
-        } else if(goodIdObj != null) {
-            try {
-                goodId = Long.parseLong(goodIdObj.toString());
-            } catch (NumberFormatException e) {
-                throw new ServiceException(Constants.CODE_500, "商品ID不正确");
-            }
+        if (orderMap == null || orderMap.isEmpty()) {
+            throw new ServiceException(Constants.CODE_404, "订单不存在或已失效");
         }
 
-        if(goodId == null) {
+        //更改状态为代付款
+        orderMapper.payOrder(orderNo);
+
+        // FIX: 2. 安全提取 goodId，增加明确的类型校验和异常提示
+        Object goodIdObj = orderMap.get("goodId");
+        Long goodId = null;
+        if (goodIdObj instanceof Long) {
+            goodId = (Long) goodIdObj;
+        } else if (goodIdObj instanceof Integer) {
+            goodId = ((Integer) goodIdObj).longValue();
+        } else if (goodIdObj instanceof String) {
+            try {
+                goodId = Long.parseLong((String) goodIdObj);
+            } catch (NumberFormatException e) {
+                throw new ServiceException(Constants.CODE_500, "商品ID格式不正确");
+            }
+        }
+        if (goodId == null) {
             throw new ServiceException(Constants.CODE_500, "商品ID不存在");
         }
+
         String standard = (String) orderMap.get("standard");
+        int count = (int) orderMap.get("count");
+
         int store = standardMapper.getStore(goodId, standard);
         if (store < count) {
             throw new ServiceException(Constants.CODE_500, "库存不足");
@@ -117,7 +126,7 @@ public class OrderService extends ServiceImpl<OrderMapper, Order> {
         String redisKey = GOOD_TOKEN_KEY + goodId;
         ValueOperations<String, Good> valueOperations = redisTemplate.opsForValue();
         Good good = valueOperations.get(redisKey);
-        if(!ObjectUtils.isEmpty(good)) {
+        if (!ObjectUtils.isEmpty(good)) {
             good.setSales(good.getSales() + count);
             valueOperations.set(redisKey, good);
         }
@@ -129,11 +138,6 @@ public class OrderService extends ServiceImpl<OrderMapper, Order> {
 
     /**
      * 我的订单：根据当前登录用户和查询条件筛选订单
-     *
-     * @param orderNo  订单号（模糊）
-     * @param state    订单状态
-     * @param goodName 商品名称（模糊）
-     * @return 订单列表
      */
     public List<Map<String, Object>> selectByCurrentUserAndCondition(String orderNo, String state, String goodName) {
         Integer currentUserId = TokenUtils.getCurrentUser().getId();

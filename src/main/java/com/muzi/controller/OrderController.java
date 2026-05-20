@@ -10,6 +10,8 @@ import com.muzi.service.OrderService;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.muzi.utils.Util;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
@@ -40,6 +42,13 @@ public class OrderController {
                                  @RequestParam(required = false) String goodName) {
         return Result.success(orderService.selectByCurrentUserAndCondition(orderNo, state, goodName));
     }
+
+    @GetMapping("/paid")
+    public ResponseEntity<Result> payOrderMissingOrderNo() {
+        return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED)
+                .body(Result.error(Constants.CODE_405, "请求路径不完整，请使用 /paid/{orderNo}"));
+    }
+
     @GetMapping("/orderNo/{orderNo}")
     public Result selectByOrderNo(@PathVariable String orderNo) {
         return Result.success(orderService.selectByOrderNo(orderNo));
